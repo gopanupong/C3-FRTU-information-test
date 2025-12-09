@@ -4,10 +4,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    // Check for credentials
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-      console.warn('Missing Google Credentials in Environment Variables');
-      // If no credentials, return empty array or mock (for demo purposes if env not set)
+      // Fallback for local testing if env vars missing
       return res.status(200).json([]);
     }
 
@@ -17,7 +15,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
-    // Load Document
     const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID || '1rI_yoyNOLKhzmxt2jCWT-bKkcn14TPylfATAifKlIYI', serviceAccountAuth);
     await doc.loadInfo();
 
@@ -26,16 +23,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sheet = doc.sheetsById[sheetId];
 
     if (!sheet) {
-      return res.status(404).json({ error: 'Sheet "รายชื่อพนักงาน" (GID: 277093410) not found' });
+      return res.status(404).json({ error: 'Sheet "รายชื่อพนักงาน" not found' });
     }
 
-    // Fetch rows
-    const rows = await sheet.getRows();
+    // Load cells A1 to A20 (Direct cell access is more robust than getRows for simple lists)
+    await sheet.loadCells('A1:A20');
+
+    const employees: string[] = [];
     
-    // Map data from "ชื่อ-สกุล" column
-    const employees = rows
-      .map((row: any) => row.get('ชื่อ-สกุล'))
-      .filter((name: string) => name && name.trim() !== '');
+    // Iterate through first 20 rows
+    for (let i = 0; i < 20; i++) {
+      const cell = sheet.getCell(i, 0); // Column A, Row i
+      const value = cell.value;
+
+      if (value && typeof value === 'string') {
+        const trimmed = value.trim();
+        // Skip header if it exists
+        if (trimmed === 'ชื่อ-สกุล' || trimmed === 'Name' || trimmed === 'รายชื่อพนักงาน') continue;
+        if (trimmed.length > 0) {
+          employees.push(trimmed);
+        }
+      }
+    }
 
     res.status(200).json(employees);
   } catch (error: any) {
