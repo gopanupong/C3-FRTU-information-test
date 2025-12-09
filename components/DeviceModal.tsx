@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { FRTU, FRTUStatus } from '../types';
 import { X, Save, Users } from 'lucide-react';
@@ -30,12 +29,26 @@ const emptyFRTU: FRTU = {
 export const DeviceModal: React.FC<DeviceModalProps> = ({ isOpen, onClose, onSave, initialData }) => {
   const [formData, setFormData] = useState<FRTU>(emptyFRTU);
   const [employees, setEmployees] = useState<string[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setFormData(initialData || { ...emptyFRTU, id: Date.now().toString() });
-      // Fetch employees list
-      setEmployees(storageService.getEmployees());
+      
+      // Fetch employees list asynchronously
+      const fetchEmployees = async () => {
+        setIsLoadingEmployees(true);
+        try {
+          const empList = await storageService.getEmployees();
+          setEmployees(empList);
+        } catch (err) {
+          console.error("Error loading employees", err);
+        } finally {
+          setIsLoadingEmployees(false);
+        }
+      };
+      
+      fetchEmployees();
     }
   }, [isOpen, initialData]);
 
@@ -47,9 +60,10 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ isOpen, onClose, onSav
   };
 
   const openEmployeeSheet = () => {
-    window.open(storageService.getGoogleSheetUrl(), '_blank');
+    window.open(storageService.getEmployeeSheetUrl(), '_blank');
   };
 
+  // Base input class with gray background
   const inputClass = "w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-pea-purple focus:border-transparent outline-none focus:bg-white transition-colors";
 
   return (
@@ -98,7 +112,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ isOpen, onClose, onSav
                 value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
             </div>
 
-            {/* Row 4: Event Details (Textarea) - Moved UP */}
+            {/* Row 4: Event Details (Textarea) */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">เหตุการณ์ที่ดำเนินงาน</label>
               <textarea 
@@ -109,7 +123,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ isOpen, onClose, onSav
               />
             </div>
 
-            {/* Row 5: Extra Data (PHOS & PHBO) - Moved DOWN */}
+            {/* Row 5: PHOS & PHBO (After Event Details) */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">ข้อมูล ของ ผอส.กสฟ.</label>
               <input type="text" className={inputClass}
@@ -148,8 +162,9 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ isOpen, onClose, onSav
                 className={inputClass}
                 value={formData.technician} 
                 onChange={e => setFormData({...formData, technician: e.target.value})}
+                disabled={isLoadingEmployees}
               >
-                <option value="">-- กรุณาเลือกรายชื่อ --</option>
+                <option value="">{isLoadingEmployees ? 'กำลังโหลดรายชื่อ...' : '-- กรุณาเลือกรายชื่อ --'}</option>
                 {employees.map((emp, index) => (
                   <option key={index} value={emp}>{emp}</option>
                 ))}

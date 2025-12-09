@@ -14,7 +14,10 @@
     "react": "^19.2.1",
     "react-router-dom": "^7.10.1",
     "lucide-react": "^0.556.0",
-    "recharts": "^3.5.1"
+    "recharts": "^3.5.1",
+    "@vercel/node": "^5.5.15",
+    "google-auth-library": "^10.5.0",
+    "google-spreadsheet": "^5.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
